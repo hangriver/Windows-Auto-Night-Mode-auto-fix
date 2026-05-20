@@ -71,7 +71,8 @@ public enum DwmRefreshSource
     ThemeManager,
     ThemeHandler,
     TaskbarColorSwitchComponent,
-    User
+    User,
+    PostSwitchFix
 }
 
 public enum ThemeOverrideSource

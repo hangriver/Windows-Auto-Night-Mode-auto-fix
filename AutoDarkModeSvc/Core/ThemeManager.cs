@@ -436,6 +436,17 @@ static class ThemeManager
         {
             state.InitSyncSwitchPerformed = true;
         }
+
+        // Post-switch DWM fix: delayed colorization refresh to fix taskbar color issues
+        if (themeSwitched && !refreshDwmViaColorizationRequested && builder.Config.Tunable.PostSwitchDwmFixEnabled)
+        {
+            int delaySeconds = builder.Config.Tunable.PostSwitchDwmFixDelaySeconds;
+            _ = Task.Run(async () =>
+            {
+                await Task.Delay(TimeSpan.FromSeconds(delaySeconds));
+                ThemeHandler.RefreshDwm(new(DwmRefreshSource.PostSwitchFix, 0, DwmRefreshType.Colorization));
+            });
+        }
     }
 }
 

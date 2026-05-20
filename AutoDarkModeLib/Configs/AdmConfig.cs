@@ -175,6 +175,8 @@ public class Tunable
         }
     }
     public bool DwmRefreshViaColorization { get; set; } = false;
+    public bool PostSwitchDwmFixEnabled { get; set; } = true;
+    public int PostSwitchDwmFixDelaySeconds { get; set; } = 10;
     public bool UseLogonTask { get; set; }
     public bool Debug { get; set; }
     public bool Trace { get; set; }

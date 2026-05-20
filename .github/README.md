@@ -1,3 +1,38 @@
+# Auto Dark Mode - Auto Fix Fork
+
+> **Fork of [AutoDarkMode/Windows-Auto-Night-Mode](https://github.com/AutoDarkMode/Windows-Auto-Night-Mode)**
+
+## Fork 特性
+
+本 fork 在主线版本基础上增加了以下优化：
+
+### 任务栏颜色延迟修复 (Post-Switch DWM Fix)
+
+**问题背景：** 在部分 Windows 11 系统上，主题切换后任务栏颜色可能出现异常（颜色不正确或未刷新）。这是 DWM (Desktop Window Manager) 的 colorization 刷新时机问题。
+
+**解决方案：** 在主题切换完成后，异步延迟执行一次 DWM colorization 刷新，确保任务栏颜色正确更新。
+
+**新增配置项：**
+
+| 配置项 | 类型 | 默认值 | 说明 |
+|--------|------|--------|------|
+| `Tunable.PostSwitchDwmFixEnabled` | bool | `true` | 是否启用延迟修复 |
+| `Tunable.PostSwitchDwmFixDelaySeconds` | int | `10` | 延迟秒数 |
+
+配置示例（在 AutoDarkMode 配置文件的 `Tunable` 节点中）：
+```json
+{
+  "Tunable": {
+    "PostSwitchDwmFixEnabled": true,
+    "PostSwitchDwmFixDelaySeconds": 10
+  }
+}
+```
+
+**为什么不合并到主线：** 此问题并非所有用户都会遇到，可能与特定硬件/驱动/Windows 版本组合相关。
+
+---
+
 <p align="center">
   <img alt="Auto Dark Mode title image" src="./assets/Readme.png" />
 </p>
