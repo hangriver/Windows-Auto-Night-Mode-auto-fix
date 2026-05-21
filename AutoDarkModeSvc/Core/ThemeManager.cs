@@ -462,7 +462,8 @@ static class ThemeManager
                     .AddText("Executing DWM refresh now...")
                     .Show();
                 
-                ThemeHandler.RefreshDwm(new(DwmRefreshSource.PostSwitchFix, 0, DwmRefreshType.Colorization));
+                // Mimic the manual fix button behavior: re-apply current theme with DWM refresh
+                RequestSwitch(new SwitchEventArgs(SwitchSource.Manual, refreshDwmViaColorization: true));
                 
                 Logger.Info("PostSwitchDwmFix: DWM refresh completed");
             });
