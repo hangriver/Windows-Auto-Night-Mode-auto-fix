@@ -25,6 +25,7 @@ using AutoDarkModeSvc.Events;
 using AutoDarkModeSvc.Handlers;
 using AutoDarkModeSvc.Interfaces;
 using AutoDarkModeSvc.SwitchComponents.Base;
+using Microsoft.Toolkit.Uwp.Notifications;
 using Windows.Devices.Sensors;
 using Windows.System.Power;
 using static AutoDarkModeLib.IThemeManager2.Flags;
@@ -443,8 +444,27 @@ static class ThemeManager
             int delaySeconds = builder.Config.Tunable.PostSwitchDwmFixDelaySeconds;
             _ = Task.Run(async () =>
             {
+                Logger.Info($"PostSwitchDwmFix: waiting {delaySeconds} seconds before DWM refresh...");
+                
+                // Show notification that DWM fix is scheduled
+                new ToastContentBuilder()
+                    .AddText("PostSwitchDwmFix")
+                    .AddText($"DWM refresh scheduled in {delaySeconds} seconds...")
+                    .Show();
+                
                 await Task.Delay(TimeSpan.FromSeconds(delaySeconds));
+                
+                Logger.Info("PostSwitchDwmFix: executing DWM refresh now");
+                
+                // Show notification that DWM fix is executing
+                new ToastContentBuilder()
+                    .AddText("PostSwitchDwmFix")
+                    .AddText("Executing DWM refresh now...")
+                    .Show();
+                
                 ThemeHandler.RefreshDwm(new(DwmRefreshSource.PostSwitchFix, 0, DwmRefreshType.Colorization));
+                
+                Logger.Info("PostSwitchDwmFix: DWM refresh completed");
             });
         }
     }
