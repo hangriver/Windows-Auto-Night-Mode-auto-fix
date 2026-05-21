@@ -71,10 +71,14 @@ jobs:
 
     - name: Prepare release package
       run: |
+        # The publish profiles already output to correct structure:
+        # bin/Publish/x86/adm-app/ui/ and bin/Publish/x86/adm-app/core/
+        # We just need to add the updater
+        
         $platformDir = "${{ matrix.platform == 'ARM64' && 'ARM64' || 'x86' }}"
         $publishDir = "bin\Publish\$platformDir"
         
-        # Create updater directory
+        # Create updater directory (sibling to adm-app)
         New-Item -ItemType Directory -Force -Path "$publishDir\adm-updater"
         
         # Copy Rust updater
@@ -84,6 +88,10 @@ jobs:
           Copy-Item "adm-updater-rs\target\release\adm-updater-rs.exe" "$publishDir\adm-updater\AutoDarkModeUpdater.exe"
         }
         Copy-Item "adm-updater-rs\license.html" "$publishDir\adm-updater\" -ErrorAction SilentlyContinue
+        
+        # Verify structure
+        Write-Host "Build output structure:"
+        Get-ChildItem -Path "$publishDir" -Recurse -Depth 2 | Select-Object FullName
         
         # Create zip archive
         $artifactName = "AutoDarkMode-${{ matrix.platform }}"
