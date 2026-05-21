@@ -1,0 +1,124 @@
+name: Build and Release
+
+on:
+  push:
+    branches: [main, master]
+    tags:
+      - 'v*'
+  pull_request:
+    branches: [main, master]
+  workflow_dispatch:  # 手动触发
+
+env:
+  DOTNET_VERSION: '9.0.x'
+
+jobs:
+  build:
+    runs-on: windows-latest
+
+    strategy:
+      matrix:
+        platform: [x64, ARM64]
+
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+
+    - name: Setup .NET SDK
+      uses: actions/setup-dotnet@v4
+      with:
+        dotnet-version: ${{ env.DOTNET_VERSION }}
+
+    - name: Setup Rust toolchain
+      uses: dtolnay/rust-toolchain@stable
+      with:
+        targets: ${{ matrix.platform == 'ARM64' && 'aarch64-pc-windows-msvc' || 'x86_64-pc-windows-msvc' }}
+
+    - name: Restore .NET dependencies
+      run: dotnet restore "Windows Auto Dark Mode.sln"
+
+    - name: Build .NET projects
+      run: dotnet build "Windows Auto Dark Mode.sln" -c Release /p:Platform=${{ matrix.platform }}
+
+    - name: Publish AutoDarkModeApp
+      run: |
+        dotnet publish AutoDarkModeApp\AutoDarkModeApp.csproj `
+          -c Release `
+          -p:Platform=${{ matrix.platform }} `
+          -p:PublishProfile=AutoDarkModeApp\Properties\PublishProfiles\AppPublish${{ matrix.platform == 'ARM64' && 'ARM64' || '' }}.pubxml
+
+    - name: Publish AutoDarkModeSvc
+      run: |
+        dotnet publish AutoDarkModeSvc\AutoDarkModeSvc.csproj `
+          -c Release `
+          -p:Platform=${{ matrix.platform }} `
+          -p:PublishProfile=AutoDarkModeSvc\Properties\PublishProfiles\ServicePublish${{ matrix.platform == 'ARM64' && 'ARM64' || '' }}.pubxml
+
+    - name: Publish AutoDarkModeShell
+      run: |
+        dotnet publish AutoDarkModeShell\AutoDarkModeShell.csproj `
+          -c Release `
+          -p:Platform=${{ matrix.platform }} `
+          -p:PublishProfile=AutoDarkModeShell\Properties\PublishProfiles\ShellPublish${{ matrix.platform == 'ARM64' && 'ARM64' || '' }}.pubxml
+
+    - name: Build Rust updater (x64)
+      if: matrix.platform == 'x64'
+      run: cargo build --release --manifest-path adm-updater-rs/Cargo.toml
+
+    - name: Build Rust updater (ARM64)
+      if: matrix.platform == 'ARM64'
+      run: cargo build --release --manifest-path adm-updater-rs/Cargo.toml --target aarch64-pc-windows-msvc
+
+    - name: Prepare release package
+      run: |
+        $platformDir = "${{ matrix.platform == 'ARM64' && 'ARM64' || 'x86' }}"
+        $publishDir = "bin\Publish\$platformDir"
+        
+        # Create updater directory
+        New-Item -ItemType Directory -Force -Path "$publishDir\adm-updater"
+        
+        # Copy Rust updater
+        if ("${{ matrix.platform }}" -eq "ARM64") {
+          Copy-Item "adm-updater-rs\target\aarch64-pc-windows-msvc\release\adm-updater-rs.exe" "$publishDir\adm-updater\AutoDarkModeUpdater.exe"
+        } else {
+          Copy-Item "adm-updater-rs\target\release\adm-updater-rs.exe" "$publishDir\adm-updater\AutoDarkModeUpdater.exe"
+        }
+        Copy-Item "adm-updater-rs\license.html" "$publishDir\adm-updater\" -ErrorAction SilentlyContinue
+        
+        # Create zip archive
+        $artifactName = "AutoDarkMode-${{ matrix.platform }}"
+        Compress-Archive -Path "$publishDir\*" -DestinationPath "$artifactName.zip"
+
+    - name: Upload build artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: AutoDarkMode-${{ matrix.platform }}
+        path: AutoDarkMode-${{ matrix.platform }}.zip
+        retention-days: 30
+
+  release:
+    needs: build
+    runs-on: ubuntu-latest
+    if: startsWith(github.ref, 'refs/tags/v')
+
+    permissions:
+      contents: write
+
+    steps:
+    - name: Download x64 artifact
+      uses: actions/download-artifact@v4
+      with:
+        name: AutoDarkMode-x64
+        path: ./artifacts
+
+    - name: Download ARM64 artifact
+      uses: actions/download-artifact@v4
+      with:
+        name: AutoDarkMode-ARM64
+        path: ./artifacts
+
+    - name: Create GitHub Release
+      uses: softprops/action-gh-release@v2
+      with:
+        files: ./artifacts/*.zip
+        generate_release_notes: true
